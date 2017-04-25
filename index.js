@@ -1,6 +1,15 @@
 'use strict'
-var http = require("http"), fs = require("fs"), qs = require("querystring"); //we need the querystring in the URL. fs and qs are variable we create here
+
+const express = require("express");
+const app = express();
+
+app.set('port', process.env.PORT || 3000);
+
 var book = require('./lib/book.js'); //and we need the array from the other file
+
+/*
+var http = require("http"), fs = require("fs"), qs = require("querystring"); //we need the querystring in the URL. fs and qs are variable we create here
+
 
 
 function serveStatic(res, path, contentType, responseCode){
@@ -51,4 +60,53 @@ http.createServer((req,res) => {
           res.end('Sorry, page not found!');
           break;
     }
+   
+
 }).listen(process.env.PORT || 3000); //view this on localhost at http://127.0.0.1:3000/
+ */
+
+app.use(express.static(__dirname + '/public')); //path for static pages
+app.use(require("body-parser").urlencoded({extended: true})); //this parses the form submissions
+
+//Express can use a 'view' to render dynamic information that differs with each request. 
+//You can specify that views use a file extension other than 'html' if desired.
+let handlebars =  require("express-handlebars");
+app.engine(".html", handlebars({extname: '.html'}));
+app.set("view engine", ".html");
+
+//the pages
+//Route handlers are specified with app.get() or app.post(), & error handlers w/ app.use():
+//home page is sent as static file - .html file is in public folder
+app.get('/', function(req,res){
+    res.type('text/html');
+    res.sendFile(__dirname + '/public/home.html'); 
+});
+//about page is sent as a plain text response
+app.get('/about', function(req,res){
+    res.type('text/plain');
+    res.send('About page');
+});
+//POST - using body-parser plugin
+app.post('/get', function(req,res){//URL will have /get? followed by querystring
+    var gotten = book.get(req.body.title);
+    res.render("details", {gotten: gotten});
+    //console.log(req.body); // display parsed form submission
+});
+// handle deletion with a GET
+app.get('/delete', function(req,res){//URL will have /delete? followed by querystring
+    let del = book.delete(req.query.title);
+    res.render("delete", {title: req.query.title, del: del});//render the delete.html page
+});
+//error handler
+app.use(function(req,res) {
+    res.type('text/plain'); 
+    res.status(404);
+    res.send('Page not found');
+});
+
+
+//start the server
+app.listen(app.get('port'), function() { //listen on port 3000 as assigned above
+    console.log('Server has been started');  //print a message to user 
+});
+
